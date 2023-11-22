@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "types": [
+      "node"
+    ] /* Specify type package names to be included without being referenced in a source file. */
+  },
+  "include": ["./src/**/*.js", "./src/**/*.ts"],
+  "exclude": ["**/*.test.ts", "**/*.spec.ts"]
+}
