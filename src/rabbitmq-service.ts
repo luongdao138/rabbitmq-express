@@ -1,9 +1,13 @@
 import { AmqpConnection } from './connection';
 import { AmqpConnectionManager } from './connection-manager';
 import { PalboxLogger } from './logger';
-import { RabbitMQConfig } from './types';
+import {
+  RabbitMQConfig,
+  RabbitMQSubscriberHandler,
+  RabbitMQSubscriberOptions,
+} from './types';
 
-const connectionManager = new AmqpConnectionManager();
+const connectionManager = AmqpConnectionManager.instance;
 
 // RabbitMQModule
 
@@ -38,7 +42,28 @@ export class RabbitMQService {
   /**
    * @description Add subscriber
    */
-  createSubscriber() {
-    //
+  async createSubscriber(
+    handler: RabbitMQSubscriberHandler,
+    config: RabbitMQSubscriberOptions,
+  ) {
+    for (const connection of connectionManager.getConnections()) {
+      // this.logger.info('Initializing RabbitMQ handlers for conne')
+      const initConfig =
+        connection.configuration.subscribers.find(
+          (subscriber) => subscriber.name === config.name,
+        ) ?? {};
+
+      const subscriberName = config.name || handler.name;
+      this.logger.debug(
+        `${connection.configuration.name}::Registering rabbitmq subscriber: ${subscriberName}`,
+      );
+
+      const mergeConfig = {
+        ...config,
+        ...initConfig,
+      };
+
+      await connection.addSubscriber(handler, mergeConfig);
+    }
   }
 }

@@ -4,6 +4,8 @@ import {
   RabbitChannelConfig,
   RabbitMQChannel,
   RabbitMQConfig,
+  RabbitMQSubscriberHandler,
+  RabbitMQSubscriberOptions,
 } from './types';
 import { PalboxLogger } from './logger';
 import {
@@ -11,7 +13,7 @@ import {
   ChannelWrapper,
   connect,
 } from 'amqp-connection-manager';
-import { ConfirmChannel } from 'amqplib';
+import { ConfirmChannel, ConsumeMessage } from 'amqplib';
 import {
   EMPTY,
   Subject,
@@ -21,6 +23,7 @@ import {
   throwError,
   timeout,
 } from 'rxjs';
+import { Nack } from './subscriber-response';
 
 const defaultConfig = {
   name: 'default', // by default, name of connection is `default` if not provided
@@ -32,6 +35,8 @@ const defaultConfig = {
     timeout: 5000,
   },
   channels: [],
+  exchanges: [],
+  subscribers: [],
 };
 
 export class AmqpConnection {
@@ -46,7 +51,18 @@ export class AmqpConnection {
   private initializeSubject = new Subject<void>();
 
   constructor(config: RabbitMQConfig) {
-    this._config = merge(cloneDeep(defaultConfig), config);
+    this._config = {
+      deserializer(msg) {
+        return JSON.parse(msg.content.toString('utf-8'));
+      },
+      serializer(data) {
+        return Buffer.from(JSON.stringify(data));
+      },
+      errorHandler() {
+        // do nothing
+      },
+      ...merge(cloneDeep(defaultConfig), config),
+    };
   }
 
   get configuration() {
@@ -200,12 +216,162 @@ export class AmqpConnection {
     if (config.default) {
       this._channel = channel;
 
-      // this method will check if have exchange with specified name
-      // if not channel will emit 'error' event => channel failed to created
-      // when channel failed to created, connection will be disconnected
-      // return channel.checkExchange('abc');
+      // assert exchange in default channel
+      await Promise.all(
+        this._config.exchanges.map((exchangeConfig) => {
+          const {
+            name,
+            createExchangeIfNotExists = true,
+            options,
+            type = this._config.defaultExchangeType,
+          } = exchangeConfig;
+
+          if (createExchangeIfNotExists) {
+            return channel.assertExchange(name, type, options);
+          }
+
+          // this method will check if have exchange with specified name
+          // if not channel will emit 'error' event => channel failed to created
+          // when channel failed to created, connection will be disconnected
+          return channel.checkExchange(name);
+        }),
+      );
 
       this.initializeSubject.next();
     }
+  }
+
+  async addSubscriber(
+    handler: RabbitMQSubscriberHandler,
+    config: RabbitMQSubscriberOptions,
+  ) {
+    await this.getManagedChannel(config.queueOptions?.channel).addSetup(
+      async (channel: ConfirmChannel) => {
+        await this.consumeMessage(handler, channel, config);
+      },
+    );
+  }
+
+  private async consumeMessage(
+    handler: RabbitMQSubscriberHandler,
+    channel: ConfirmChannel,
+    config: RabbitMQSubscriberOptions,
+  ) {
+    // setup queue, exchange, routing key, bindings before consuming message
+    const queueName = await this.setupQueue(channel, config);
+
+    // consume message
+    await channel.consume(queueName, async (msg) => {
+      if (_.isNull(msg)) {
+        this.logger.warn('Receive null message');
+        return;
+      }
+
+      try {
+        const response = await this.handleMessage(handler, msg);
+
+        if (response instanceof Nack) {
+          channel.nack(msg, false, response.requeue);
+          return;
+        }
+
+        if (response) {
+          this.logger.warn(
+            `Received response [${this._config.serializer(
+              response,
+            )}] from subscriber []. Subcribe handlers should only return void or Nack instance`,
+          );
+        }
+
+        // acknowledge message when process successfully
+        channel.ack(msg);
+      } catch (error) {
+        const errorHandler = config.errorHandler || this._config.errorHandler; // local => module
+
+        await errorHandler(channel, msg, error);
+      }
+    });
+  }
+
+  private handleMessage(
+    handler: RabbitMQSubscriberHandler,
+    msg: ConsumeMessage,
+  ) {
+    let message: any;
+    let headers: any;
+
+    if (msg.content) {
+      // deserialize message before process it
+      message = this._config.deserializer(msg);
+    }
+
+    if (msg.properties?.headers) {
+      headers = msg.properties.headers;
+    }
+
+    return handler(message, msg, headers);
+  }
+
+  private async setupQueue(
+    channel: ConfirmChannel,
+    config: RabbitMQSubscriberOptions,
+  ) {
+    let queueName: string;
+    const {
+      createQueueIfNotExists = true,
+      queue = '',
+      queueOptions = {},
+      routingKey = [],
+      exchange,
+    } = config;
+
+    // check queue
+    if (createQueueIfNotExists) {
+      const { queue: currentQueueName } = await channel.assertQueue(
+        queue,
+        queueOptions,
+      );
+      queueName = currentQueueName;
+    } else {
+      const { queue: currentQueueName } = await channel.checkQueue(queue);
+      queueName = currentQueueName;
+    }
+
+    const routingKeys = Array.isArray(routingKey) ? routingKey : [routingKey];
+
+    if (exchange && routingKeys.length) {
+      await Promise.all(
+        routingKeys
+          .filter(Boolean)
+          .map((key) =>
+            channel.bindQueue(
+              queueName,
+              exchange,
+              key,
+              queueOptions.bindingQueueArgs,
+            ),
+          ),
+      );
+    }
+
+    return queueName;
+  }
+
+  private getManagedChannel(channelName?: string) {
+    if (!channelName) {
+      return this._rabbitmqChannel;
+    }
+
+    const channel = this._rabbitmqChannels.get(channelName);
+
+    if (!channel) {
+      this.logger.warn(
+        `Channel '${channelName}' does not exist, using default channel`,
+      );
+
+      return this._rabbitmqChannel;
+    }
+
+    return channel;
   }
 }
