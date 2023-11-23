@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  # db:
+  #   image: mongo:4.4.23
+  #   ports:
+  #     - '27020:27017'
+  #   environment:
+  #     - MONGO_INITDB_ROOT_USERNAME=luongdao
+  #     - MONGO_INITDB_ROOT_PASSWORD=12356789
+  #   volumes:
+  #     - /var/lib/mongodb_local:/data/db
+  #   networks:
+  #     - palbox
+
+  # redis:
+  #   image: redis:7.2
+  #   ports:
+  #     - '6382:6379'
+  #   restart: unless-stopped
+  #   volumes:
+  #     - redis:/data
+  #   networks:
+  #     - palbox
+
+  rabbitmq:
+    image: rabbitmq:3.9.1-management
+    restart: unless-stopped
+    ports:
+      - '5673:5672'
+      - '15673:15672'
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+      - rabbitmq_log:/var/log/rabbitmq/
+    networks:
+      - palbox
+    # environment:
+    #   - RABBITMQ_DEFAULT_USER=luongdao
+    #   - RABBITMQ_DEFAULT_PASS=123456789
+
+networks:
+  palbox:
+    driver: bridge
+volumes:
+  # redis:
+  rabbitmq_data:
+  rabbitmq_log:
+  # mongo:

@@ -1,25 +1,25 @@
-import { filter, from, reduce, take } from 'rxjs';
 import { AmqpConnection } from './connection';
 
 export class AmqpConnectionManager {
-  private connections: AmqpConnection[] = [];
+  private _connections: AmqpConnection[] = [];
 
   constructor() {}
 
-  fromSource() {
-    return from(this.connections);
+  addConnection(connection: AmqpConnection) {
+    return this._connections.push(connection);
   }
 
   getConnections() {
-    return this.fromSource().pipe(
-      reduce((acc, current) => [...acc, current], [] as AmqpConnection[]),
-    );
+    return this._connections;
   }
 
   getConnection(name: string) {
-    return this.fromSource().pipe(
-      filter((connection) => connection.configuration.name === name),
-      take(1),
+    return this._connections.find(
+      (connection) => connection.configuration.name === name,
     );
+  }
+
+  clearConnections() {
+    this._connections = [];
   }
 }
