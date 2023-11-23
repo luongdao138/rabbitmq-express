@@ -26,8 +26,8 @@ services:
     image: rabbitmq:3.9.1-management
     restart: unless-stopped
     ports:
-      - '5673:5672'
-      - '15673:15672'
+      - '5674:5672'
+      - '15674:15672'
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/
       - rabbitmq_log:/var/log/rabbitmq/

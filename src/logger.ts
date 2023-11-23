@@ -100,7 +100,7 @@ export class PalboxLogger {
   ) {
     const { shouldLog } = logOptions;
 
-    if (_.isUndefined(shouldLog)) return true;
+    if (_.isNil(shouldLog)) return true;
     if (typeof shouldLog === 'boolean') return shouldLog;
 
     const { envs, level } = shouldLog;
@@ -135,11 +135,11 @@ export class PalboxLogger {
     this.log('info', {}, message, ...meta);
   }
 
-  public warn(message: any, ...meta: []) {
+  public warn(message: any, ...meta: any[]) {
     this.log('warn', {}, message, ...meta);
   }
 
-  public error(message: any, ...meta: []) {
+  public error(message: any, ...meta: any[]) {
     this.log('error', {}, message, ...meta);
   }
 

@@ -1,23 +1,3 @@
-//ts utils
-export type DeepRequired<T, P extends string[] = string[]> = T extends object
-  ? Omit<T, Extract<keyof T, P[0]>> &
-      Required<{
-        [K in Extract<keyof T, P[0]>]: NonNullable<
-          DeepRequired<T[K], ShiftUnion<P>>
-        >;
-      }>
-  : T;
-
-export type Shift<T extends any[]> = ((...t: T) => any) extends (
-  first: any,
-  ...rest: infer Rest
-) => any
-  ? Rest
-  : never;
-
-// use a distributed conditional type here
-type ShiftUnion<T> = T extends any[] ? Shift<T> : never;
-
 export enum EXCHANGE_TYPE {
   TOPIC = 'topic',
   DIRECT = 'direct',
@@ -30,6 +10,13 @@ export type ConnectOptions = {
   timeout?: number;
   reject?: boolean;
 };
+
+export type RabbitChannelConfig = {
+  prefetchCount?: number;
+  default?: boolean;
+};
+
+export type RabbitMQChannel = { name: string; config?: RabbitChannelConfig };
 
 export type RabbitMQConfig = {
   /**
@@ -58,4 +45,9 @@ export type RabbitMQConfig = {
    * @description Connection options
    */
   connectOptions?: ConnectOptions;
+
+  /**
+   * @description Channels to be created on init
+   */
+  channels?: RabbitMQChannel[];
 };

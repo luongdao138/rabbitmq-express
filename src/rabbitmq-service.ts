@@ -24,7 +24,7 @@ export class RabbitMQService {
 
     // init connection configs
     await this._connection.init();
-    this.logger.info('Successfully connected to RabbitMQ');
+    this.logger.debug('Successfully connected to RabbitMQ');
   }
 
   get connection() {
@@ -33,5 +33,12 @@ export class RabbitMQService {
 
   get config() {
     return this._connection.configuration;
+  }
+
+  /**
+   * @description Add subscriber
+   */
+  createSubscriber() {
+    //
   }
 }
