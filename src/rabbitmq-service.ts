@@ -42,12 +42,11 @@ export class RabbitMQService {
   /**
    * @description Add subscriber
    */
-  async createSubscriber(
+  async registerSubscriber(
     handler: RabbitMQSubscriberHandler,
     config: RabbitMQSubscriberOptions,
   ) {
     for (const connection of connectionManager.getConnections()) {
-      // this.logger.info('Initializing RabbitMQ handlers for conne')
       const initConfig =
         connection.configuration.subscribers.find(
           (subscriber) => subscriber.name === config.name,

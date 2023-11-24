@@ -1,4 +1,3 @@
-// import { EMPTY, interval, throwError, timeout } from 'rxjs';
 import { RabbitMQService } from './rabbitmq-service';
 import { registerSubscribers } from './subscribers';
 

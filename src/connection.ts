@@ -13,13 +13,15 @@ import {
   ChannelWrapper,
   connect,
 } from 'amqp-connection-manager';
-import { ConfirmChannel, ConsumeMessage } from 'amqplib';
+import { ConfirmChannel, ConsumeMessage, Options, Replies } from 'amqplib';
 import {
   EMPTY,
+  Observable,
   Subject,
   catchError,
   lastValueFrom,
   take,
+  takeLast,
   throwError,
   timeout,
 } from 'rxjs';
@@ -100,6 +102,59 @@ export class AmqpConnection {
         }),
         catchError((err) => (reject ? throwError(() => err) : EMPTY)),
       ),
+    );
+  }
+
+  async addSubscriber(
+    handler: RabbitMQSubscriberHandler,
+    config: RabbitMQSubscriberOptions,
+  ) {
+    await this.getManagedChannel(config.queueOptions?.channel).addSetup(
+      async (channel: ConfirmChannel) => {
+        await this.consumeMessage(handler, channel, config);
+      },
+    );
+  }
+
+  async publish<T = any>(
+    exchange: string,
+    routingKey: string,
+    msg: T,
+    options: Options.Publish = {},
+  ) {
+    if (!this._rabbitmqConnection.isConnected() || !this._channel) {
+      throw new Error('AMQP connection is not available');
+    }
+
+    let buffer: Buffer;
+
+    if (msg instanceof Buffer) {
+      buffer = msg;
+    } else if (msg instanceof Uint8Array) {
+      buffer = Buffer.from(msg);
+    } else if (!_.isNil(msg)) {
+      buffer = this._config.serializer(msg);
+    } else {
+      buffer = Buffer.alloc(0);
+    }
+
+    return lastValueFrom(
+      new Observable<Replies.Empty>((subsciber) => {
+        this._channel.publish(
+          exchange,
+          routingKey,
+          buffer,
+          options,
+          (err, ok) => {
+            if (err) {
+              subsciber.error(err);
+            }
+
+            subsciber.next(ok);
+            subsciber.complete();
+          },
+        );
+      }).pipe(takeLast(1)),
     );
   }
 
@@ -202,7 +257,7 @@ export class AmqpConnection {
    * @param name
    * @param config
    */
-  async setUpInitChannel(
+  private async setUpInitChannel(
     channel: ConfirmChannel,
     name: string,
     config: RabbitChannelConfig,
@@ -239,17 +294,6 @@ export class AmqpConnection {
 
       this.initializeSubject.next();
     }
-  }
-
-  async addSubscriber(
-    handler: RabbitMQSubscriberHandler,
-    config: RabbitMQSubscriberOptions,
-  ) {
-    await this.getManagedChannel(config.queueOptions?.channel).addSetup(
-      async (channel: ConfirmChannel) => {
-        await this.consumeMessage(handler, channel, config);
-      },
-    );
   }
 
   private async consumeMessage(
