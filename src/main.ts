@@ -1,3 +1,4 @@
+import { testPublishers } from './publishers';
 import { RabbitMQService } from './rabbitmq-service';
 import { registerSubscribers } from './subscribers';
 
@@ -8,7 +9,8 @@ async function bootstrap() {
     uri: RABBITMQ_CONNECTION_URI,
     name: 'Palbox',
     connectOptions: {
-      wait: false,
+      wait: true,
+      reject: false,
     },
     exchanges: [
       {
@@ -20,7 +22,12 @@ async function bootstrap() {
     ],
   });
 
+  // init connection are asynchronous => need a function to assert connection and channel
+  await rabbitMQService.initConnection();
+
   await registerSubscribers(rabbitMQService);
+
+  await testPublishers(rabbitMQService);
 }
 
 bootstrap();

@@ -9,8 +9,19 @@ export enum EXCHANGE_TYPE {
 }
 
 export type ConnectOptions = {
+  /**
+   * @description wait until connection and default channel is connected to start app
+   */
   wait?: boolean;
+
+  /**
+   * @description use it if `wait` is set to true, timeout duration of rabbitmq connection
+   */
   timeout?: number;
+
+  /**
+   * @description use it if `wait` is set to true, and you don't want to crash app if can not connect to rabbitmq
+   */
   reject?: boolean;
 };
 

@@ -19,6 +19,7 @@ import {
   Observable,
   Subject,
   catchError,
+  defaultIfEmpty,
   lastValueFrom,
   take,
   takeLast,
@@ -50,7 +51,7 @@ export class AmqpConnection {
 
   private _channels: Map<string, ConfirmChannel> = new Map();
   private _channel!: ConfirmChannel;
-  private initializeSubject = new Subject<void>();
+  private initializeSubject = new Subject<boolean>();
 
   constructor(config: RabbitMQConfig) {
     this._config = {
@@ -100,7 +101,17 @@ export class AmqpConnection {
                 ),
             ),
         }),
-        catchError((err) => (reject ? throwError(() => err) : EMPTY)),
+        catchError((err) => {
+          if (reject) {
+            return throwError(() => err);
+          }
+
+          this.logger.warn(
+            `Failed to connnect to a RabbitMQ broker within a timeout of ${timeoutInterval}ms. Set 'reject' = true if you want to stop server if no connection available`,
+          );
+          return EMPTY;
+        }),
+        defaultIfEmpty(false),
       ),
     );
   }
@@ -217,6 +228,8 @@ export class AmqpConnection {
         this.setupManagedChannel(channel.name, channel.config ?? {});
       }),
     );
+
+    return true;
   }
 
   private setupManagedChannel(name: string, config: RabbitChannelConfig) {
@@ -292,7 +305,7 @@ export class AmqpConnection {
         }),
       );
 
-      this.initializeSubject.next();
+      this.initializeSubject.next(true);
     }
   }
 
