@@ -10,6 +10,9 @@ async function bootstrap() {
     name: 'Palbox',
     connectOptions: {
       reject: false,
+      managerOptions: {
+        heartbeatIntervalInSeconds: 30, // heartbeat 30s
+      },
     },
     exchanges: [
       {

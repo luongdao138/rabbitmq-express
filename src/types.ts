@@ -1,5 +1,6 @@
 import { Channel, ConsumeMessage, Options } from 'amqplib';
 import { Nack } from './subscriber-response';
+import { AmqpConnectionManagerOptions } from 'amqp-connection-manager';
 
 export enum EXCHANGE_TYPE {
   TOPIC = 'topic',
@@ -23,9 +24,17 @@ export type ConnectOptions = {
    * @description use it if `wait` is set to true, and you don't want to crash app if can not connect to rabbitmq
    */
   reject?: boolean;
+
+  /**
+   * @description options when create rabbitmq connection
+   */
+  managerOptions?: AmqpConnectionManagerOptions;
 };
 
 export type RabbitMQQueueOptions = {
+  /**
+   * @description Specify channel to exchange messages
+   */
   channel?: string;
   bindingQueueArgs?: any;
 } & Options.AssertQueue;

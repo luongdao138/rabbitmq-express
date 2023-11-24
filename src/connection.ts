@@ -36,6 +36,7 @@ const defaultConfig = {
     wait: true,
     reject: true,
     timeout: 5000,
+    managerOptions: {},
   },
   channels: [],
   exchanges: [],
@@ -200,6 +201,7 @@ export class AmqpConnection {
     // create actual rabbitmq connection
     this._rabbitmqConnection = connect(
       Array.isArray(this._config.uri) ? this._config.uri : [this._config.uri],
+      this._config.connectOptions.managerOptions ?? {},
     );
 
     this._rabbitmqConnection.on('connect', () => {
