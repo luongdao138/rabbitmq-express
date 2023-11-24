@@ -41,6 +41,7 @@ const defaultConfig = {
   channels: [],
   exchanges: [],
   subscribers: [],
+  defaultConsumeOptions: {},
 };
 
 export class AmqpConnection {
@@ -129,6 +130,7 @@ export class AmqpConnection {
   async registerSubscriber(
     handler: RabbitMQSubscriberHandler,
     config: RabbitMQSubscriberOptions,
+    consumeOptions?: Options.Consume,
   ) {
     const subscriberName = config.name || handler.name;
     this.logger.debug(
@@ -146,7 +148,12 @@ export class AmqpConnection {
 
     await this.getManagedChannel(mergeConfig.queueOptions?.channel).addSetup(
       async (channel: ConfirmChannel) => {
-        await this.consumeMessage(handler, channel, mergeConfig);
+        await this.consumeMessage(
+          handler,
+          channel,
+          mergeConfig,
+          consumeOptions,
+        );
       },
     );
   }
@@ -339,41 +346,52 @@ export class AmqpConnection {
     handler: RabbitMQSubscriberHandler,
     channel: ConfirmChannel,
     config: RabbitMQSubscriberOptions,
+    consumeOptions: Options.Consume = {},
   ) {
     // setup queue, exchange, routing key, bindings before consuming message
     const queueName = await this.setupQueue(channel, config);
 
+    // add some default configs for cosuming messages
+    const consumeConfig: Options.Consume = {
+      ...this._config.defaultConsumeOptions, // default
+      ...consumeOptions,
+    };
+
     // consume message
-    await channel.consume(queueName, async (msg) => {
-      if (_.isNull(msg)) {
-        this.logger.warn('Receive null message');
-        return;
-      }
-
-      try {
-        const response = await this.handleMessage(handler, msg);
-
-        if (response instanceof Nack) {
-          channel.nack(msg, false, response.requeue);
+    await channel.consume(
+      queueName,
+      async (msg) => {
+        if (_.isNull(msg)) {
+          this.logger.warn('Receive null message');
           return;
         }
 
-        if (response) {
-          this.logger.warn(
-            `Received response [${this._config.serializer(
-              response,
-            )}] from subscriber []. Subcribe handlers should only return void or Nack instance`,
-          );
+        try {
+          const response = await this.handleMessage(handler, msg);
+
+          if (response instanceof Nack) {
+            channel.nack(msg, false, response.requeue);
+            return;
+          }
+
+          if (response) {
+            this.logger.warn(
+              `Received response [${this._config.serializer(
+                response,
+              )}] from subscriber []. Subcribe handlers should only return void or Nack instance`,
+            );
+          }
+
+          // acknowledge message when process successfully
+          channel.ack(msg);
+        } catch (error) {
+          const errorHandler = config.errorHandler || this._config.errorHandler; // local => module
+
+          await errorHandler(channel, msg, error);
         }
-
-        // acknowledge message when process successfully
-        channel.ack(msg);
-      } catch (error) {
-        const errorHandler = config.errorHandler || this._config.errorHandler; // local => module
-
-        await errorHandler(channel, msg, error);
-      }
-    });
+      },
+      consumeConfig,
+    );
   }
 
   private handleMessage(

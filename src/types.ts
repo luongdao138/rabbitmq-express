@@ -143,4 +143,9 @@ export type RabbitMQConfig = {
    * Exchange to be created
    */
   exchanges?: RabbitMQExchange[];
+
+  /**
+   * Default options when consuming message
+   */
+  defaultConsumeOptions?: Options.Consume;
 };
