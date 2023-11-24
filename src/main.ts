@@ -9,7 +9,6 @@ async function bootstrap() {
     uri: RABBITMQ_CONNECTION_URI,
     name: 'Palbox',
     connectOptions: {
-      wait: true,
       reject: false,
     },
     exchanges: [
@@ -18,6 +17,11 @@ async function bootstrap() {
       },
       {
         name: 'exchange_2',
+      },
+    ],
+    channels: [
+      {
+        name: 'Palbox',
       },
     ],
   });

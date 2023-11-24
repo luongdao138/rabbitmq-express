@@ -1,11 +1,7 @@
 import { AmqpConnection } from './connection';
 import { AmqpConnectionManager } from './connection-manager';
 import { PalboxLogger } from './logger';
-import {
-  RabbitMQConfig,
-  RabbitMQSubscriberHandler,
-  RabbitMQSubscriberOptions,
-} from './types';
+import { RabbitMQConfig } from './types';
 
 const connectionManager = AmqpConnectionManager.instance;
 
@@ -34,7 +30,7 @@ export class RabbitMQService {
     const isIntialized = await this._connection.init();
 
     if (isIntialized) {
-      if (this._config.connectOptions?.wait) {
+      if (this._connection.configuration.connectOptions.wait) {
         this.logger.debug('Successfully connected to RabbitMQ');
       } else {
         this.logger.debug(
@@ -44,38 +40,21 @@ export class RabbitMQService {
     }
   }
 
+  /**
+   * @description Close rabbitmq connection
+   */
+  async closeConnection() {
+    this.logger.info('Close AMQP connections');
+
+    await this.connection.managedConnection.close();
+    connectionManager.removeConnection(this.connection.configuration.name);
+  }
+
   get connection() {
     return this._connection;
   }
 
   get config() {
     return this._connection.configuration;
-  }
-
-  /**
-   * @description Add subscriber
-   */
-  async registerSubscriber(
-    handler: RabbitMQSubscriberHandler,
-    config: RabbitMQSubscriberOptions,
-  ) {
-    for (const connection of connectionManager.getConnections()) {
-      const initConfig =
-        connection.configuration.subscribers.find(
-          (subscriber) => subscriber.name === config.name,
-        ) ?? {};
-
-      const subscriberName = config.name || handler.name;
-      this.logger.debug(
-        `${connection.configuration.name}::Registering rabbitmq subscriber: ${subscriberName}`,
-      );
-
-      const mergeConfig = {
-        ...config,
-        ...initConfig,
-      };
-
-      await connection.addSubscriber(handler, mergeConfig);
-    }
   }
 }

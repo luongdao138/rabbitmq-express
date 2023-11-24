@@ -28,6 +28,12 @@ export class AmqpConnectionManager {
     );
   }
 
+  removeConnection(name: string) {
+    this._connections = this._connections.filter(
+      (connection) => connection.configuration.name !== name,
+    );
+  }
+
   clearConnections() {
     this._connections = [];
   }

@@ -72,6 +72,10 @@ export class AmqpConnection {
     return this._config;
   }
 
+  get managedConnection() {
+    return this._rabbitmqConnection;
+  }
+
   async init() {
     const {
       reject,
@@ -116,13 +120,32 @@ export class AmqpConnection {
     );
   }
 
-  async addSubscriber(
+  /**
+   * @description Register a subscriber
+   * @param handler
+   * @param config
+   */
+  async registerSubscriber(
     handler: RabbitMQSubscriberHandler,
     config: RabbitMQSubscriberOptions,
   ) {
-    await this.getManagedChannel(config.queueOptions?.channel).addSetup(
+    const subscriberName = config.name || handler.name;
+    this.logger.debug(
+      `${this._config.name}::Registering rabbitmq subscriber: ${subscriberName}`,
+    );
+
+    const initConfig =
+      this._config.subscribers.find(
+        (subscriber) => subscriber.name === config.name,
+      ) ?? {};
+    const mergeConfig = {
+      ...config,
+      ...initConfig,
+    };
+
+    await this.getManagedChannel(mergeConfig.queueOptions?.channel).addSetup(
       async (channel: ConfirmChannel) => {
-        await this.consumeMessage(handler, channel, config);
+        await this.consumeMessage(handler, channel, mergeConfig);
       },
     );
   }
@@ -196,22 +219,16 @@ export class AmqpConnection {
 
     // get the first channel that has default = true to be the default channel
     defaultChannel = this._config.channels.find(
-      (channel) => !!channel.config?.default,
+      (channel) => channel.config?.default === true,
     );
 
-    // assign default value to all channels
-    this._config.channels =
-      this.configuration.channels.map((channel) => ({
-        ...channel,
-        config: {
-          prefetchCount: this._config.prefetchCount,
-          default: channel.name === defaultChannel?.name ? true : false,
-          ...(channel.config ?? {}),
-        },
-      })) ?? [];
+    if (!defaultChannel) {
+      defaultChannel = this._config.channels.find(
+        (channel) => channel.config?.default === undefined,
+      );
+    }
 
     if (!defaultChannel) {
-      // not provided any default channels, create a default channel
       defaultChannel = {
         name: AmqpConnection.name,
         config: {
@@ -219,13 +236,20 @@ export class AmqpConnection {
           default: true,
         },
       };
-
       this._config.channels.push(defaultChannel);
     }
 
     await Promise.all(
       this._config.channels.map((channel) => {
-        this.setupManagedChannel(channel.name, channel.config ?? {});
+        const channelConfig = {
+          ...channel,
+          config: {
+            default: channel.name === defaultChannel!.name,
+            prefetchCount:
+              channel.config?.prefetchCount ?? this._config.prefetchCount,
+          },
+        };
+        this.setupManagedChannel(channel.name, channelConfig.config);
       }),
     );
 
