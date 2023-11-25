@@ -1,6 +1,6 @@
 {
   "name": "@luongdao/node-rabbitmq",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "NodeJS library for RabbitMQ",
   "author": {
     "name": "Dao Van Luong",
@@ -26,7 +26,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/luongdao138/rabbitmq-express"
+    "url": "git+https://github.com/luongdao138/rabbitmq-express.git"
   },
   "scripts": {
     "build:dev": "tsc -p tsconfig.json",
@@ -38,7 +38,7 @@
     "format": "prettier --write \"src/**/*.{js,ts}\" \"**/*.md\"",
     "lint": "eslint --max-warnings 0 --report-unused-disable-directives --ext js,ts src",
     "lint:fix": "eslint --ext js,ts src --fix",
-    "publish": "yarn build:dev:clean && npm publish"
+    "publish:npm": "yarn build:dev:clean && npm publish"
   },
   "engines": {
     "node": ">=12.10.0"
