@@ -23,7 +23,8 @@ services:
   #     - palbox
 
   rabbitmq:
-    image: rabbitmq:3.9.1-management
+    build:
+      dockerfile: ./Dockerfile.rabbitmq
     restart: unless-stopped
     ports:
       - '5674:5672'

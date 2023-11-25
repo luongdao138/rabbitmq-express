@@ -1,0 +1,12 @@
+# from base image
+FROM rabbitmq:3.9.1-management
+
+# Install wget
+RUN apt update && \
+apt install -y wget
+
+# Download plugin file and put it into plugin folder
+RUN cd /opt/rabbitmq/plugins && wget https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/3.9.0/rabbitmq_delayed_message_exchange-3.9.0.ez
+
+# Enable the plugin
+RUN rabbitmq-plugins enable rabbitmq_delayed_message_exchange

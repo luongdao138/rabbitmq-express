@@ -1,6 +1,7 @@
 import { testPublishers } from './publishers';
 import { RabbitMQService } from './rabbitmq-service';
 import { registerSubscribers } from './subscribers';
+import { EXTENDED_EXCHANGE_TYPE } from './types';
 
 const RABBITMQ_CONNECTION_URI = 'amqp://guest:guest@localhost:5674';
 
@@ -20,6 +21,7 @@ async function bootstrap() {
       },
       {
         name: 'exchange_2',
+        type: EXTENDED_EXCHANGE_TYPE.DELAY_MESSAGE,
       },
     ],
     channels: [

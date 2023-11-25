@@ -1,9 +1,11 @@
 import _, { cloneDeep, merge } from 'lodash';
 import {
-  EXCHANGE_TYPE,
+  EXTENDED_EXCHANGE_TYPE,
   RabbitChannelConfig,
   RabbitMQChannel,
   RabbitMQConfig,
+  RabbitMQExchange,
+  RabbitMQPublishOptions,
   RabbitMQSubscriberHandler,
   RabbitMQSubscriberOptions,
 } from './types';
@@ -31,7 +33,7 @@ import { Nack } from './subscriber-response';
 const defaultConfig = {
   name: 'default', // by default, name of connection is `default` if not provided
   prefetchCount: 10,
-  defaultExchangeType: EXCHANGE_TYPE.TOPIC,
+  defaultExchangeType: EXTENDED_EXCHANGE_TYPE.TOPIC,
   connectOptions: {
     wait: true,
     reject: true,
@@ -164,10 +166,18 @@ export class AmqpConnection {
     exchange: string,
     routingKey: string,
     msg: T,
-    options: Options.Publish = {},
+    options: RabbitMQPublishOptions = {},
   ) {
     if (!this._rabbitmqConnection.isConnected() || !this._channel) {
       throw new Error('AMQP connection is not available');
+    }
+
+    // TODO: add feature to create exchange if not exists here
+    const exchangeToPublish = this._config.exchanges.find(
+      (e) => e.name === exchange,
+    );
+    if (!exchangeToPublish) {
+      throw new Error('Exchange not found');
     }
 
     let buffer: Buffer;
@@ -181,6 +191,9 @@ export class AmqpConnection {
     } else {
       buffer = Buffer.alloc(0);
     }
+
+    // convert some options before publishing message
+    this.setPublishOptions(exchangeToPublish, options);
 
     return lastValueFrom(
       new Observable<Replies.Empty>((subsciber) => {
@@ -200,6 +213,24 @@ export class AmqpConnection {
         );
       }).pipe(takeLast(1)),
     );
+  }
+
+  private setPublishOptions(
+    exchangeToPublish: RabbitMQExchange,
+    options: RabbitMQPublishOptions,
+  ) {
+    // add delay configuration
+    if (
+      typeof options.delay === 'number' &&
+      exchangeToPublish.type === EXTENDED_EXCHANGE_TYPE.DELAY_MESSAGE
+    ) {
+      options.headers = {
+        ...(options.headers || {}),
+        'x-delay': options.delay,
+      };
+
+      delete options.delay;
+    }
   }
 
   private async initCore() {
@@ -325,9 +356,19 @@ export class AmqpConnection {
           const {
             name,
             createExchangeIfNotExists = true,
-            options,
+            options = {},
             type = this._config.defaultExchangeType,
           } = exchangeConfig;
+
+          if (type === EXTENDED_EXCHANGE_TYPE.DELAY_MESSAGE) {
+            options.arguments = {
+              ...(options.arguments || {}),
+              'x-delayed-type':
+                'delayType' in exchangeConfig
+                  ? exchangeConfig.delayType || EXTENDED_EXCHANGE_TYPE.TOPIC
+                  : EXTENDED_EXCHANGE_TYPE.TOPIC,
+            };
+          }
 
           if (createExchangeIfNotExists) {
             return channel.assertExchange(name, type, options);

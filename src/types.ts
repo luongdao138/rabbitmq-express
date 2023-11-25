@@ -2,12 +2,20 @@ import { Channel, ConsumeMessage, Options } from 'amqplib';
 import { Nack } from './subscriber-response';
 import { AmqpConnectionManagerOptions } from 'amqp-connection-manager';
 
-export enum EXCHANGE_TYPE {
+export enum EXTENDED_EXCHANGE_TYPE {
   TOPIC = 'topic',
   DIRECT = 'direct',
   FANOUT = 'fanout',
   HEADERS = 'headers',
+
+  // for delay exchange (rabbitmq_delayed_message_exchange plugin)
+  DELAY_MESSAGE = 'x-delayed-message',
 }
+
+export type EXCHANGE_TYPE = Exclude<
+  EXTENDED_EXCHANGE_TYPE,
+  EXTENDED_EXCHANGE_TYPE.DELAY_MESSAGE
+>;
 
 export type ConnectOptions = {
   /**
@@ -39,6 +47,13 @@ export type RabbitMQQueueOptions = {
   bindingQueueArgs?: any;
 } & Options.AssertQueue;
 
+export type RabbitMQPublishOptions = Options.Publish & {
+  /**
+   * @description Use when set exchange type = 'x-delay-message'.
+   */
+  delay?: number;
+};
+
 export type RabbitMQSubscriberOptions = {
   name?: string;
   exchange?: string;
@@ -62,10 +77,14 @@ export type RabbitMQChannel = { name: string; config?: RabbitChannelConfig };
 
 export type RabbitMQExchange = {
   name: string;
-  type?: EXCHANGE_TYPE;
-  createExchangeIfNotExists?: boolean;
   options?: Options.AssertExchange;
-};
+  createExchangeIfNotExists?: boolean;
+} & (
+  | {
+      type?: EXCHANGE_TYPE;
+    }
+  | { type: EXTENDED_EXCHANGE_TYPE.DELAY_MESSAGE; delayType?: EXCHANGE_TYPE }
+);
 
 export type RabbitMQSubscriber = {
   name: string;
