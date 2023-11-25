@@ -1,6 +1,6 @@
 import { AmqpConnection } from './connection';
 import { AmqpConnectionManager } from './connection-manager';
-import { PalboxLogger } from './logger';
+import { DefaultLogger } from './default-logger';
 import { RabbitMQConfig } from './types';
 
 const connectionManager = AmqpConnectionManager.instance;
@@ -10,10 +10,12 @@ const connectionManager = AmqpConnectionManager.instance;
 export class RabbitMQService {
   private _config: RabbitMQConfig;
   private _connection!: AmqpConnection;
-  private logger = new PalboxLogger({ label: 'RabbitMQModule' });
+  private _logger;
 
   constructor(config: RabbitMQConfig) {
     this._config = config;
+
+    this._logger = config.logger || new DefaultLogger();
   }
 
   /**
@@ -31,9 +33,9 @@ export class RabbitMQService {
 
     if (isIntialized) {
       if (this._connection.configuration.connectOptions.wait) {
-        this.logger.debug('Successfully connected to RabbitMQ');
+        this._logger.debug('Successfully connected to RabbitMQ');
       } else {
-        this.logger.debug(
+        this._logger.debug(
           "Finish rabbitmq initialization! Set 'wait' = true if you want to make sure rabbitmq connection and default channel are available",
         );
       }
@@ -44,7 +46,7 @@ export class RabbitMQService {
    * @description Close rabbitmq connection
    */
   async closeConnection() {
-    this.logger.info('Close AMQP connections');
+    this._logger.info('Close AMQP connections');
 
     await this.connection.managedConnection.close();
     connectionManager.removeConnection(this.connection.configuration.name);

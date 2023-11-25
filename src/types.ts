@@ -112,6 +112,14 @@ export type RabbitMQSubscriberErrorHandler = (
   error: any,
 ) => Promise<void> | void;
 
+export interface ILogger {
+  info(message: any, ...meta: any[]): void;
+  warn(message: any, ...meta: any[]): void;
+  error(message: any, ...meta: any[]): void;
+  debug(message: any, ...meta: any[]): void;
+  silly(message: any, ...meta: any[]): void;
+}
+
 export type RabbitMQConfig = {
   /**
    * @description Name of connection
@@ -174,4 +182,9 @@ export type RabbitMQConfig = {
    * Default options when consuming message
    */
   defaultConsumeOptions?: Options.Consume;
+
+  /**
+   * Logger of application. Must implement ILogger interface
+   */
+  logger?: ILogger;
 };

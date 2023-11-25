@@ -10,7 +10,6 @@ import {
   RabbitMQSubscriberOptions,
   Nack,
 } from './types';
-import { PalboxLogger } from './logger';
 import {
   AmqpConnectionManager,
   ChannelWrapper,
@@ -29,6 +28,7 @@ import {
   throwError,
   timeout,
 } from 'rxjs';
+import { DefaultLogger } from './default-logger';
 
 const defaultConfig = {
   name: 'default', // by default, name of connection is `default` if not provided
@@ -44,10 +44,11 @@ const defaultConfig = {
   exchanges: [],
   subscribers: [],
   defaultConsumeOptions: {},
+  logger: new DefaultLogger(),
 };
 
 export class AmqpConnection {
-  private logger = new PalboxLogger({ label: 'RabbitMQModule' });
+  private _logger;
   private _config: Required<RabbitMQConfig>;
   private _rabbitmqConnection!: AmqpConnectionManager;
   private _rabbitmqChannels: Map<string, ChannelWrapper> = new Map(); // save all channels
@@ -72,6 +73,8 @@ export class AmqpConnection {
       },
       ...merge(cloneDeep(defaultConfig), config),
     };
+
+    this._logger = this._config.logger;
   }
 
   get configuration() {
@@ -116,7 +119,7 @@ export class AmqpConnection {
             return throwError(() => err);
           }
 
-          this.logger.warn(
+          this._logger.warn(
             `Failed to connnect to a RabbitMQ broker within a timeout of ${timeoutInterval}ms. Set 'reject' = true if you want to stop server if no connection available`,
           );
           return EMPTY;
@@ -137,7 +140,7 @@ export class AmqpConnection {
     consumeOptions?: Options.Consume,
   ) {
     const subscriberName = config.name || handler.name;
-    this.logger.debug(
+    this._logger.debug(
       `${this._config.name}::Registering rabbitmq subscriber: ${subscriberName}`,
     );
 
@@ -234,7 +237,7 @@ export class AmqpConnection {
   }
 
   private async initCore() {
-    this.logger.info(
+    this._logger.info(
       `Trying to connect to RabbitMQ broker ${this._config.name}`,
     );
 
@@ -245,13 +248,13 @@ export class AmqpConnection {
     );
 
     this._rabbitmqConnection.on('connect', () => {
-      this.logger.info(
+      this._logger.info(
         `Successfully connected to RabbitMQ broker: ${this._config.name}`,
       );
     });
 
     this._rabbitmqConnection.on('disconnect', (err: any) => {
-      this.logger.error(
+      this._logger.error(
         `Disconnected from RabbitMQ broker: ${this._config.name}: %o`,
         err.stack || err,
       );
@@ -312,15 +315,17 @@ export class AmqpConnection {
 
     // channel events
     newChannel.on('connect', () => {
-      this.logger.info(`Successfully connected to a RabbitMQ channel: ${name}`);
+      this._logger.info(
+        `Successfully connected to a RabbitMQ channel: ${name}`,
+      );
     });
 
     newChannel.on('close', () => {
-      this.logger.info(`Successfully closed to a RabbitMQ channel: ${name}`);
+      this._logger.info(`Successfully closed to a RabbitMQ channel: ${name}`);
     });
 
     newChannel.on('error', (err, { name }) => {
-      this.logger.warn(
+      this._logger.warn(
         `Failed to create a RabbitMQ channel: ${name} / error: ${err.message} ${err.stack}`,
       );
     });
@@ -405,7 +410,7 @@ export class AmqpConnection {
       queueName,
       async (msg) => {
         if (_.isNull(msg)) {
-          this.logger.warn('Receive null message');
+          this._logger.warn('Receive null message');
           return;
         }
 
@@ -418,7 +423,7 @@ export class AmqpConnection {
           }
 
           if (response) {
-            this.logger.warn(
+            this._logger.warn(
               `Received response [${this._config.serializer(
                 response,
               )}] from subscriber []. Subcribe handlers should only return void or Nack instance`,
@@ -509,7 +514,7 @@ export class AmqpConnection {
     const channel = this._rabbitmqChannels.get(channelName);
 
     if (!channel) {
-      this.logger.warn(
+      this._logger.warn(
         `Channel '${channelName}' does not exist, using default channel`,
       );
 
