@@ -365,16 +365,6 @@ export class AmqpConnection {
             type = this._config.defaultExchangeType,
           } = exchangeConfig;
 
-          if (type === EXTENDED_EXCHANGE_TYPE.DELAY_MESSAGE) {
-            options.arguments = {
-              ...(options.arguments || {}),
-              'x-delayed-type':
-                'delayType' in exchangeConfig
-                  ? exchangeConfig.delayType || EXTENDED_EXCHANGE_TYPE.TOPIC
-                  : EXTENDED_EXCHANGE_TYPE.TOPIC,
-            };
-          }
-
           if (createExchangeIfNotExists) {
             return channel.assertExchange(name, type, options);
           }

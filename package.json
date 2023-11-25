@@ -1,6 +1,6 @@
 {
   "name": "@luongdao/node-rabbitmq",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "NodeJS library for RabbitMQ",
   "author": {
     "name": "Dao Van Luong",
@@ -37,7 +37,8 @@
     "check-types": "tsc --pretty --noEmit -p tsconfig.dev.json && echo \"Types compiled\"",
     "format": "prettier --write \"src/**/*.{js,ts}\" \"**/*.md\"",
     "lint": "eslint --max-warnings 0 --report-unused-disable-directives --ext js,ts src",
-    "lint:fix": "eslint --ext js,ts src --fix"
+    "lint:fix": "eslint --ext js,ts src --fix",
+    "publish": "yarn build:dev:clean && npm publish"
   },
   "engines": {
     "node": ">=12.10.0"
@@ -45,8 +46,8 @@
   "dependencies": {
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.8.0",
-    "rxjs": "^7.8.1",
-    "lodash": "^4.17.20"
+    "lodash": "^4.17.20",
+    "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.4",
