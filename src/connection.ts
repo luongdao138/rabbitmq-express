@@ -8,6 +8,7 @@ import {
   RabbitMQPublishOptions,
   RabbitMQSubscriberHandler,
   RabbitMQSubscriberOptions,
+  Nack,
 } from './types';
 import { PalboxLogger } from './logger';
 import {
@@ -28,7 +29,6 @@ import {
   throwError,
   timeout,
 } from 'rxjs';
-import { Nack } from './subscriber-response';
 
 const defaultConfig = {
   name: 'default', // by default, name of connection is `default` if not provided

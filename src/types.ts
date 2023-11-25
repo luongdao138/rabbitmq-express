@@ -1,6 +1,13 @@
 import { Channel, ConsumeMessage, Options } from 'amqplib';
-import { Nack } from './subscriber-response';
 import { AmqpConnectionManagerOptions } from 'amqp-connection-manager';
+
+export class Nack {
+  constructor(private readonly _requeue = false) {}
+
+  get requeue() {
+    return this._requeue;
+  }
+}
 
 export enum EXTENDED_EXCHANGE_TYPE {
   TOPIC = 'topic',
