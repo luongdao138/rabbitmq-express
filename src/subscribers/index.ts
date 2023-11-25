@@ -7,6 +7,9 @@ export async function registerSubscribers(service: RabbitMQService) {
       queue: 'queue_1',
       exchange: 'exchange_1',
       routingKey: 'routing_key_1',
+      queueOptions: {
+        channel: 'Palbox_Consumer',
+      },
     }),
   ]);
 }

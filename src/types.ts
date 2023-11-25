@@ -33,7 +33,7 @@ export type ConnectOptions = {
 
 export type RabbitMQQueueOptions = {
   /**
-   * @description Specify channel to exchange messages
+   * @description Specify channel from which the queue will consume message from
    */
   channel?: string;
   bindingQueueArgs?: any;

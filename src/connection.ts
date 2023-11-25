@@ -52,6 +52,8 @@ export class AmqpConnection {
   private _rabbitmqChannel!: ChannelWrapper;
 
   private _channels: Map<string, ConfirmChannel> = new Map();
+
+  // always use default channel to publish message
   private _channel!: ConfirmChannel;
   private initializeSubject = new Subject<boolean>();
 

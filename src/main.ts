@@ -24,7 +24,17 @@ async function bootstrap() {
     ],
     channels: [
       {
-        name: 'Palbox',
+        name: 'Palbox_Producer',
+        config: {
+          default: true,
+        },
+      },
+      {
+        name: 'Palbox_Consumer',
+        config: {
+          default: false,
+          prefetchCount: 20,
+        },
       },
     ],
   });
