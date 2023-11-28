@@ -9,13 +9,14 @@ import {
   RabbitMQSubscriberHandler,
   RabbitMQSubscriberOptions,
   Nack,
+  RabbitMQPublishResult,
 } from './types';
 import {
   AmqpConnectionManager,
   ChannelWrapper,
   connect,
 } from 'amqp-connection-manager';
-import { ConfirmChannel, ConsumeMessage, Options, Replies } from 'amqplib';
+import { ConfirmChannel, ConsumeMessage, Options } from 'amqplib';
 import {
   EMPTY,
   Observable,
@@ -23,8 +24,8 @@ import {
   catchError,
   defaultIfEmpty,
   lastValueFrom,
+  of,
   take,
-  takeLast,
   throwError,
   timeout,
 } from 'rxjs';
@@ -170,7 +171,7 @@ export class AmqpConnection {
     routingKey: string,
     msg: T,
     options: RabbitMQPublishOptions = {},
-  ) {
+  ): Promise<RabbitMQPublishResult> {
     if (!this._rabbitmqConnection.isConnected() || !this._channel) {
       throw new Error('AMQP connection is not available');
     }
@@ -198,8 +199,11 @@ export class AmqpConnection {
     // convert some options before publishing message
     this.setPublishOptions(exchangeToPublish, options);
 
-    return lastValueFrom(
-      new Observable<Replies.Empty>((subsciber) => {
+    const getSource =
+      options.publishSource ||
+      ((source: Observable<RabbitMQPublishResult>) => source);
+    const source = await getSource(
+      new Observable((subsciber) => {
         this._channel.publish(
           exchange,
           routingKey,
@@ -208,13 +212,43 @@ export class AmqpConnection {
           (err, ok) => {
             if (err) {
               subsciber.error(err);
+              return;
             }
 
-            subsciber.next(ok);
+            subsciber.next({
+              success: true,
+              data: ok,
+            });
             subsciber.complete();
           },
         );
-      }).pipe(takeLast(1)),
+      }),
+    );
+
+    // timeout for publising message is 5000ms
+    return lastValueFrom(
+      source.pipe(
+        timeout({
+          each: 5000,
+          with() {
+            return throwError(
+              () => new Error('Publish timeout: exceed 5000ms'),
+            );
+          },
+        }),
+        catchError((error: any) => {
+          this._logger.error(
+            'Published message failed: %o',
+            error.stack || error,
+          );
+
+          return of({
+            success: false,
+            error,
+          });
+        }),
+        take(1),
+      ),
     );
   }
 

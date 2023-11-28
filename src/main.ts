@@ -22,6 +22,11 @@ async function bootstrap() {
       {
         name: 'exchange_2',
         type: EXTENDED_EXCHANGE_TYPE.DELAY_MESSAGE,
+        options: {
+          arguments: {
+            'x-delayed-type': EXTENDED_EXCHANGE_TYPE.TOPIC,
+          },
+        },
       },
     ],
     channels: [

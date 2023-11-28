@@ -1,5 +1,6 @@
-import { Channel, ConsumeMessage, Options } from 'amqplib';
 import { AmqpConnectionManagerOptions } from 'amqp-connection-manager';
+import { Channel, ConsumeMessage, Options } from 'amqplib';
+import { Observable } from 'rxjs';
 
 export class Nack {
   constructor(private readonly _requeue = false) {}
@@ -54,11 +55,27 @@ export type RabbitMQQueueOptions = {
   bindingQueueArgs?: any;
 } & Options.AssertQueue;
 
+export type RabbitMQPublishResult =
+  | {
+      success: true;
+      data?: any;
+    }
+  | {
+      success: false;
+      error?: Error;
+    };
+
 export type RabbitMQPublishOptions = Options.Publish & {
   /**
    * @description Use when set exchange type = 'x-delay-message'.
    */
   delay?: number;
+
+  publishSource?: (
+    baseSource: Observable<RabbitMQPublishResult>,
+  ) =>
+    | Observable<RabbitMQPublishResult>
+    | Promise<Observable<RabbitMQPublishResult>>;
 };
 
 export type RabbitMQSubscriberOptions = {
