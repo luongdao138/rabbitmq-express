@@ -466,7 +466,7 @@ export class AmqpConnection {
     );
   }
 
-  private handleMessage(
+  private async handleMessage(
     handler: RabbitMQSubscriberHandler,
     msg: ConsumeMessage,
   ) {
@@ -482,7 +482,7 @@ export class AmqpConnection {
       headers = msg.properties.headers;
     }
 
-    return handler(message, msg, headers);
+    return await handler(message, msg, headers);
   }
 
   private async setupQueue(
