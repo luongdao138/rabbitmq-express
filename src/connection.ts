@@ -515,7 +515,7 @@ export class AmqpConnection {
     if (exchange && routingKeys.length) {
       await Promise.all(
         routingKeys
-          .filter(Boolean)
+          .filter((key) => !_.isNull(key))
           .map((key) =>
             channel.bindQueue(
               queueName,
