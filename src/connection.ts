@@ -166,6 +166,31 @@ export class AmqpConnection {
     );
   }
 
+  async sendToQueue<T = any>(
+    queueName: string,
+    msg: T,
+    options: RabbitMQPublishOptions = {},
+    exchangeOptions: Options.AssertExchange = {},
+  ) {
+    if (!this._rabbitmqConnection.isConnected() || !this._channel) {
+      throw new Error('AMQP connection is not available');
+    }
+
+    const exchangeToPublish = this._config.exchanges.find(
+      (e) => e.name === queueName,
+    );
+    if (!exchangeToPublish) {
+      // create new exchange
+      await this._channel.assertExchange(
+        queueName,
+        EXTENDED_EXCHANGE_TYPE.DIRECT,
+        exchangeOptions,
+      );
+    }
+
+    return await this.publish<T>(queueName, queueName, msg, options);
+  }
+
   async publish<T = any>(
     exchange: string,
     routingKey: string,
