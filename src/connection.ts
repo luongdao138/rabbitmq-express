@@ -439,7 +439,7 @@ export class AmqpConnection {
         }
 
         try {
-          const response = await this.handleMessage(handler, msg);
+          const response = await this.handleMessage(handler, msg, channel);
 
           if (response instanceof Nack) {
             channel.nack(msg, false, response.requeue);
@@ -469,9 +469,10 @@ export class AmqpConnection {
   private async handleMessage(
     handler: RabbitMQSubscriberHandler,
     msg: ConsumeMessage,
+    channel: ConfirmChannel,
   ) {
     let message: any;
-    let headers: any;
+    let headers: any = {};
 
     if (msg.content) {
       // deserialize message before process it
@@ -482,7 +483,7 @@ export class AmqpConnection {
       headers = msg.properties.headers;
     }
 
-    return await handler(message, msg, headers);
+    return await handler(message, msg, headers, channel);
   }
 
   private async setupQueue(

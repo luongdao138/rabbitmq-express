@@ -120,7 +120,8 @@ export type RabbitMQSubscriberResponse = void | Nack | any;
 export type RabbitMQSubscriberHandler<T = any> = (
   msg: T,
   amqpMsg: ConsumeMessage,
-  headers?: any,
+  headers: any,
+  channel: Channel,
 ) => RabbitMQSubscriberResponse | Promise<RabbitMQSubscriberResponse>;
 
 export type RabbitMQSubscriberErrorHandler = (
