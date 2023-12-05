@@ -86,6 +86,11 @@ export class AmqpConnection {
     return this._rabbitmqConnection;
   }
 
+  get channel() {
+    if (!this._channel) throw new Error('channel is not available');
+    return this._channel;
+  }
+
   async init() {
     const {
       reject,
